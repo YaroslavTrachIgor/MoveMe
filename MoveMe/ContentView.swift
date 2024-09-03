@@ -6,19 +6,28 @@
 //
 
 import SwiftUI
+import PhotosUI
+import AVFoundation
+import AVKit
+import FirebaseAuth
+
+let backColor = Color(#colorLiteral(red: 0.02752985433, green: 0.02760775015, blue: 0.08294134587, alpha: 1))
+let secondaryBackColor = Color(#colorLiteral(red: 0.05454473197, green: 0.05279297382, blue: 0.1667607129, alpha: 1))
+
+let foreColor = Color(#colorLiteral(red: 0.8614941239, green: 0.3432193995, blue: 0.9051209092, alpha: 1))
 
 struct ContentView: View {
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        if ((Auth.auth().currentUser?.isAnonymous) == nil) {
+            SplashView()
+                .environment(\.colorScheme, .dark)
+                .onAppear {
+                    Auth.auth().signInAnonymously()
+                }
+        } else {
+            TabBarScreen()
+                .environment(\.colorScheme, .dark)
         }
-        .padding()
     }
-}
-
-#Preview {
-    ContentView()
 }
