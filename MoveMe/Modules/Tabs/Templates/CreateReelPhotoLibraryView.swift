@@ -126,9 +126,9 @@ struct CreateReelPhotoLibraryView: View {
                 }
                 .padding()
                 .padding(.bottom, -12)
-                .onChange(of: selectedCategory) {
-                    photoLibraryViewModel.fetchAssets(for: selectedCategory)
-                }
+//                .onChange(of: selectedCategory) {
+//                    photoLibraryViewModel.fetchAssets(for: selectedCategory)
+//                }
                 
                 ScrollView {
                     if photoLibraryViewModel.assets.isEmpty {

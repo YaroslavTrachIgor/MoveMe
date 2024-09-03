@@ -152,9 +152,9 @@ struct TemplatesView: View {
             .background(backColor)
             .edgesIgnoringSafeArea(.top)
             .navigationBarHidden(true)
-            .navigationDestination(item: $selectedTemplate) { template in
-                TemplateDetailView(template: template)
-            }
+//            .navigationDestination(item: $selectedTemplate) { template in
+//                TemplateDetailView(template: template)
+//            }
             .fullScreenCover(isPresented: $presentSubscriptionsCoerView, content: {
                 SubscritionsCoverView()
             })
