@@ -10,7 +10,7 @@ import SwiftUI
 import Photos
 import _AVKit_SwiftUI
 
-struct CreateReelPhotoLibraryView: View {
+struct TemplatePhotoLibraryView: View {
     
     @State var template: Template
     
@@ -353,6 +353,7 @@ struct CreateReelPhotoLibraryView: View {
         .background(backColor)
         .navigationBarHidden(true)
         .toolbar(.hidden, for: .tabBar)
+        .tint(tabBarForeColor)
     }
     
     func loadFullSizeImagesAndPrepareAssets() {
@@ -409,12 +410,12 @@ struct CreateReelPhotoLibraryView: View {
         let videoAssets = selectedAssets.filter { $0.type == .video }
         
         if template.slides.count == Template.list[4].slides.count {
-            let tempSelectedAssets = selectedAssets
-            for asset in tempSelectedAssets {
-                let tempAsset = asset
-                tempAsset.id = UUID()
-                selectedAssets.append(tempAsset)
+            let newAssets = selectedAssets.map { asset in
+                var newAsset = asset
+                newAsset.id = UUID()
+                return newAsset
             }
+            selectedAssets.append(contentsOf: newAssets)
         }
         
         if let defaultAudioPath = template.defaultAudioPath {
@@ -454,14 +455,17 @@ struct CreateReelPhotoLibraryView: View {
         var slides = template.slides
         
         if template.slides.count == Template.list[4].slides.count {
-            for (index, asset) in selectedAssets.enumerated() {
+            slides = selectedAssets.enumerated().map { (index, asset) in
+                var slide = slides[index]
                 if asset.type == .video {
-                    slides[index].isVideo = true
+                    slide.id = UUID()
+                    slide.isVideo = true
                 }
+                return slide
             }
         }
         
-        var videoSlides = slides.filter({ $0.isVideo })
+        let videoSlides = slides.filter({ $0.isVideo })
         
         withAnimation {
             isCropping = true
@@ -476,6 +480,7 @@ struct CreateReelPhotoLibraryView: View {
             VideoRenderingManager.shared.cropVideo(asset: asset, slide: videoSlides[index]) { result in
                 switch result {
                 case .success(let croppedAsset):
+                    print(videoSlides[index].duration)
                     DispatchQueue.main.async {
                         self.croppedAssets.append(croppedAsset)
                         withAnimation {

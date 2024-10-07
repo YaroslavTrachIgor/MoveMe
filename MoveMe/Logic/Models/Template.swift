@@ -12,7 +12,7 @@ struct Template: Identifiable, Hashable {
     let name: String
     let iconName: String
     let items: Int
-    let duration: Double
+    var duration: Double
     let example: String?
     var slides: [Slide]
     var defaultAudioPath: String?

@@ -10,6 +10,8 @@ import SwiftUI
 
 struct TabBarScreen: View {
     
+    @State private var presentCustomCustomReelView: Bool = false
+    
     @State private var presentPlusButton: Bool = true
     @State private var tabBarVisible: Bool = true
     
@@ -50,6 +52,7 @@ struct TabBarScreen: View {
                     HStack {
                         Spacer()
                         Button(action: {
+                            presentCustomCustomReelView.toggle()
                         }) {
                             Image(systemName: "plus")
                                 .font(.system(size: 23))
@@ -65,6 +68,9 @@ struct TabBarScreen: View {
                     }
                 }
             }
+        }
+        .fullScreenCover(isPresented: $presentCustomCustomReelView) {
+            CustomCustomReelView()
         }
     }
 }
