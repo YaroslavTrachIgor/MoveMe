@@ -30,11 +30,22 @@ struct CreateReelPhotoLibraryView: View {
     @State private var croppedAssets: [MediaAsset] = []
     
     @State private var presentVideoEditingView: Bool = false
+    @State private var isLoadingFullSizeImages = false
+    @State private var loadingProgress: Double = 0
     
-    @State private var generatedVideoURL: URL?
+    @State private var audioURL: URL?
+    @State private var audioName: String?
+    @State private var audioStartTime: Double = 0.0
+    @State private var audioEndTime: Double = 0.0
+
+    
     
     var isCorrectNumberOfAssetsSelected: Bool {
-        selectedAssets.count == template.slides.count
+        if Template.list[4] != template {
+            return selectedAssets.count == template.slides.count
+        } else {
+            return selectedAssets.count == 12
+        }
     }
     
     var body: some View {
@@ -43,6 +54,7 @@ struct CreateReelPhotoLibraryView: View {
                 HStack {
                     Button {
                         presentationMode.wrappedValue.dismiss()
+                        
                     } label: {
                         Image(systemName: "chevron.backward")
                             .font(.title3)
@@ -88,7 +100,7 @@ struct CreateReelPhotoLibraryView: View {
                     Spacer()
                     
                     
-                    Text("\(selectedAssets.count)/\(template.slides.count)")
+                    Text("\(selectedAssets.count)/\(Template.list[4] != template ? template.slides.count : 12)")
                         .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(Color(#colorLiteral(red: 0.9535612464, green: 0.6204099059, blue: 0.9816270471, alpha: 1)))
@@ -126,9 +138,9 @@ struct CreateReelPhotoLibraryView: View {
                 }
                 .padding()
                 .padding(.bottom, -12)
-//                .onChange(of: selectedCategory) {
-//                    photoLibraryViewModel.fetchAssets(for: selectedCategory)
-//                }
+                .onChange(of: selectedCategory) { newValue in
+                    photoLibraryViewModel.fetchAssets(for: selectedCategory)
+                }
                 
                 ScrollView {
                     if photoLibraryViewModel.assets.isEmpty {
@@ -136,14 +148,20 @@ struct CreateReelPhotoLibraryView: View {
                             .foregroundColor(.gray)
                             .padding()
                     } else {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 5) {
+                        let columns = [
+                            GridItem(.adaptive(minimum: 100, maximum: 200), spacing: 5),
+                            GridItem(.adaptive(minimum: 100, maximum: 200), spacing: 5),
+                            GridItem(.adaptive(minimum: 100, maximum: 200), spacing: 5)
+                        ]
+                        
+                        LazyVGrid(columns: columns, spacing: 5) {
                             ForEach(photoLibraryViewModel.assets, id: \.self) { asset in
                                 if let image = asset.thumbnail {
                                     ZStack {
                                         Image(uiImage: image)
                                             .resizable()
                                             .aspectRatio(contentMode: .fill)
-                                            .frame(width: 115, height: 115)
+                                            .frame(minWidth: 100, maxWidth: 200, minHeight: 100, maxHeight: 200)
                                             .clipped()
                                             .cornerRadius(8)
                                             .overlay(content: {
@@ -180,6 +198,7 @@ struct CreateReelPhotoLibraryView: View {
                                             Spacer()
                                         }
                                     }
+                                    .aspectRatio(1, contentMode: .fit)
                                     .onTapGesture {
                                         withAnimation {
                                             if selectedAssets.contains(where: { $0.id == asset.id }) {
@@ -209,6 +228,7 @@ struct CreateReelPhotoLibraryView: View {
                 .padding(.top, -4)
                 .padding(.bottom, 78)
             }
+
             
             
             VStack {
@@ -231,7 +251,7 @@ struct CreateReelPhotoLibraryView: View {
                     
                     
                     Button(action: {
-                        prepareAssetsForEditing()
+                        loadFullSizeImagesAndPrepareAssets()
                     }, label: {
                         Text("Continue")
                             .font(.system(size: 16, weight: .semibold))
@@ -279,18 +299,105 @@ struct CreateReelPhotoLibraryView: View {
             
             
             
+            if isLoadingFullSizeImages {
+                backColor.opacity(0.5)
+                
+                BlurView(style: .dark)
+                    .edgesIgnoringSafeArea(.all)
+                
+                VStack {
+                    ProgressView("", value: loadingProgress, total: 1.0)
+                        .progressViewStyle(LinearProgressViewStyle())
+                        .foregroundStyle(LinearGradient(gradient: Gradient(colors: [.purple, .pink, .orange]), startPoint: .leading, endPoint: .trailing))
+                        .padding()
+                        .padding(.horizontal)
+                        .padding(.bottom, -30)
+                    
+                    Text("\(Int(loadingProgress * 100))%")
+                        .font(.caption)
+                        .foregroundStyle(Color.white.opacity(0.3))
+                        .padding()
+                        .padding(.bottom)
+                }
+            }
+            
+            
+            
             
         }
         .fullScreenCover(isPresented: $presentSubscritionsCoverView) {
             SubscritionsCoverView()
         }
         .navigationDestination(isPresented: $presentVideoEditingView, destination: {
-            VideoEditingView(selectedAssetsArray: selectedAssets, template: template)
+            VStack {
+                if let audioURL = audioURL {
+                    VideoEditingView(
+                        selectedAssetsArray: selectedAssets,
+                        template: template,
+                        audioURL: audioURL,
+                        audioName: audioName,
+                        audioStartTime: audioStartTime,
+                        audioEndTime: audioEndTime
+                    )
+                } else {
+                    VideoEditingView(
+                        selectedAssetsArray: selectedAssets,
+                        template: template
+                    )
+                }
+            }
+        })
+        .onDisappear(perform: {
+            self.selectedAssets = []
         })
         .background(backColor)
         .navigationBarHidden(true)
         .toolbar(.hidden, for: .tabBar)
     }
+    
+    func loadFullSizeImagesAndPrepareAssets() {
+        isLoadingFullSizeImages = true
+        loadingProgress = 0
+        
+        let totalAssets = Double(selectedAssets.count)
+        var loadedAssets = 0
+        
+        let group = DispatchGroup()
+        
+        for asset in selectedAssets {
+            group.enter()
+            
+            if asset.type == .photo {
+                photoLibraryViewModel.loadFullSizeImage(for: asset) { fullSizeImage in
+                    DispatchQueue.main.async {
+                        if let fullSizeImage = fullSizeImage {
+                            asset.fullSizeImage = fullSizeImage
+                            
+                            print("Thumbnail size: \(asset.thumbnail?.pngData()?.count ?? 0)")
+                            print("Full-size image: \(asset.fullSizeImage?.pngData()?.count ?? 0)")
+                        }
+                        loadedAssets += 1
+                        self.loadingProgress = Double(loadedAssets) / totalAssets
+                        group.leave()
+                    }
+                }
+            } else {
+                // For video assets, we don't need to load full-size images
+                loadedAssets += 1
+                self.loadingProgress = Double(loadedAssets) / totalAssets
+                group.leave()
+            }
+        }
+        
+        group.notify(queue: .main) {
+            self.isLoadingFullSizeImages = false
+            // Force SwiftUI to update the view
+            self.selectedAssets = self.selectedAssets
+            self.prepareAssetsForEditing()
+        }
+    }
+
+
     
     func prepareAssetsForEditing() {
         for (index, asset) in selectedAssets.enumerated() {
@@ -299,29 +406,62 @@ struct CreateReelPhotoLibraryView: View {
             }
         }
         
-        // Crop videos if necessary
         let videoAssets = selectedAssets.filter { $0.type == .video }
-        if !videoAssets.isEmpty {
-            cropSelectedVideos {
-                presentVideoEditingView.toggle()
-            }
-        } else {
-            presentVideoEditingView.toggle()
-        }
-    }
-    
-    func cropSelectedVideos(completion: @escaping () -> Void) {
+        
         if template.slides.count == Template.list[4].slides.count {
             let tempSelectedAssets = selectedAssets
             for asset in tempSelectedAssets {
-                var tempAsset = asset
+                let tempAsset = asset
                 tempAsset.id = UUID()
                 selectedAssets.append(tempAsset)
             }
         }
         
+        if let defaultAudioPath = template.defaultAudioPath {
+            getAudioFromFirebase(path: defaultAudioPath) { result in
+                switch result {
+                case .success(let url):
+                    
+                    audioURL = url
+                    audioName = url.relativeString
+                    audioStartTime = 0.0
+                    audioEndTime = template.duration
+                    
+                    if !videoAssets.isEmpty {
+                        cropSelectedVideos {
+                            presentVideoEditingView.toggle()
+                        }
+                    } else {
+                        presentVideoEditingView.toggle()
+                    }
+                case .failure(let error):
+                    print("Error getting audio file from Firebase: \(error.localizedDescription)")
+                }
+            }
+        } else {
+            if !videoAssets.isEmpty {
+                cropSelectedVideos {
+                    presentVideoEditingView.toggle()
+                }
+            } else {
+                presentVideoEditingView.toggle()
+            }
+        }
+    }
+    
+    func cropSelectedVideos(completion: @escaping () -> Void) {
         let videoAssets = selectedAssets.filter { $0.type == .video }
-        let videoSlides = template.slides.filter { $0.isVideo }
+        var slides = template.slides
+        
+        if template.slides.count == Template.list[4].slides.count {
+            for (index, asset) in selectedAssets.enumerated() {
+                if asset.type == .video {
+                    slides[index].isVideo = true
+                }
+            }
+        }
+        
+        var videoSlides = slides.filter({ $0.isVideo })
         
         withAnimation {
             isCropping = true
@@ -362,35 +502,6 @@ struct CreateReelPhotoLibraryView: View {
             }
             completion()
         }
-    }
-    
-    func orderAssetsAccordingToSlides() -> [MediaAsset] {
-        var orderedAssets: [MediaAsset] = []
-        var photoIndex = 0
-        var videoIndex = 0
-        
-        print(croppedAssets.count)
-        
-        // Create ordered arrays of video and photo assets
-        let orderedSelectedAssets = Array(selectedAssets)
-        let orderedVideoAssets = orderedSelectedAssets.filter { $0.type == .video }
-        let orderedPhotoAssets = orderedSelectedAssets.filter { $0.type == .photo }
-        
-        for slide in template.slides {
-            if slide.isVideo {
-                if !croppedAssets.isEmpty {
-                    orderedAssets.append(croppedAssets[videoIndex])
-                    videoIndex += 1
-                }
-            } else {
-                if !orderedPhotoAssets.isEmpty {
-                    orderedAssets.append(orderedPhotoAssets[photoIndex])
-                    photoIndex += 1
-                }
-            }
-        }
-        
-        return orderedAssets
     }
 }
 

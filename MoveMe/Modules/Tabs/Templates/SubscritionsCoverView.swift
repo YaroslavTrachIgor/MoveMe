@@ -154,9 +154,6 @@ struct SubscritionsCoverView: View {
     }
 }
 
-#Preview {
-    SubscritionsCoverView()
-}
 
 struct DashedUnderline: ViewModifier {
     let color: Color

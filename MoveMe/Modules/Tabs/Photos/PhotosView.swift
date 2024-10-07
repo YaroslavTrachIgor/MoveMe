@@ -10,28 +10,23 @@ import SwiftUI
 import Photos
 import _AVKit_SwiftUI
 
-struct PhotosView: View {
-    var body: some View {
-        PhotoLibraryView()
-    }
-    
-}
-
-#Preview(body: {
-    PhotosView()
-})
-
 struct PhotoLibraryView: View {
     
     @StateObject private var photoLibraryViewModel = PhotoLibraryViewModel()
     
+    @State private var presentSettingsView = false
     @State private var presentSelectTemplateView = false
     @State private var presentSubscritionsCoverView = false
+    
+    @State private var isLoadingFullSizeImages = false
+    @State private var loadingProgress: Double = 0
     
     @State private var selectedCategory: PhotoCategory = .recent
     @State private var selectedAssets: Set<MediaAsset> = []
     
     @AppStorage(UserDefaultsKeys.isPremium) var isPremium = false
+    
+    @Binding var tabBarVisible: Bool
     
     var body: some View {
         NavigationStack {
@@ -46,24 +41,17 @@ struct PhotoLibraryView: View {
                         
                         Spacer()
                         
-                        if !isPremium {
-                            Button(action: {
-                                presentSubscritionsCoverView.toggle()
-                            }) {
-                                HStack {
-                                    Image(systemName: "star.fill")
-                                        .padding(.leading, 8)
-                                        .padding(.trailing, -10)
-                                    Text("PRO")
-                                        .fontWeight(.bold)
-                                        .padding(8)
-                                }
-                                .padding(0)
-                                .background(LinearGradient(gradient: Gradient(colors: [.purple, .pink, .orange]), startPoint: .leading, endPoint: .trailing))
-                                .cornerRadius(18)
-                                .foregroundColor(.white)
-                                .padding(.trailing, 16)
+                        Button(action: {
+                            presentSettingsView.toggle()
+                        }) {
+                            HStack {
+                                Image(systemName: "gearshape")
+                                    .font(.title3)
+                                    .fontWeight(.medium)
+                                    .padding(.leading, 8)
+                                    .foregroundStyle(Color.white)
                             }
+                            .padding(.trailing, 16)
                         }
                     }
                     .padding(.top, 2)
@@ -115,14 +103,21 @@ struct PhotoLibraryView: View {
                                 .foregroundColor(.gray)
                                 .padding()
                         } else {
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 5) {
-                                ForEach(photoLibraryViewModel.assets, id: \.self) { asset in
+                            let columns = [
+                                GridItem(.adaptive(minimum: 100, maximum: 200), spacing: 5),
+                                GridItem(.adaptive(minimum: 100, maximum: 200), spacing: 5),
+                                GridItem(.adaptive(minimum: 100, maximum: 200), spacing: 5)
+                            ]
+                            
+                            LazyVGrid(columns: columns, spacing: 5) {
+                                ForEach(photoLibraryViewModel.assets.indices, id: \.self) { index in
+                                    let asset = photoLibraryViewModel.assets[index]
                                     if let image = asset.thumbnail {
                                         ZStack {
                                             Image(uiImage: image)
                                                 .resizable()
                                                 .aspectRatio(contentMode: .fill)
-                                                .frame(width: 115, height: 115)
+                                                .frame(minWidth: 100, maxWidth: 200, minHeight: 100, maxHeight: 200)
                                                 .clipped()
                                                 .cornerRadius(8)
                                                 .overlay(content: {
@@ -159,6 +154,7 @@ struct PhotoLibraryView: View {
                                                 Spacer()
                                             }
                                         }
+                                        .aspectRatio(1, contentMode: .fit)
                                         .onTapGesture {
                                             withAnimation {
                                                 if selectedAssets.contains(asset) {
@@ -207,7 +203,7 @@ struct PhotoLibraryView: View {
                             }
                         
                         Button(action: {
-                            presentSelectTemplateView.toggle()
+                            loadFullSizeImagesAndPrepareAssets()
                         }, label: {
                             Text("Continue")
                                 .font(.system(size: 16, weight: .semibold))
@@ -224,6 +220,29 @@ struct PhotoLibraryView: View {
                     }
                     .ignoresSafeArea(.all)
                 }
+                
+                
+                if isLoadingFullSizeImages {
+                    backColor.opacity(0.5)
+                    
+                    BlurView(style: .dark)
+                        .edgesIgnoringSafeArea(.all)
+                    
+                    VStack {
+                        ProgressView("", value: loadingProgress, total: 1.0)
+                            .progressViewStyle(LinearProgressViewStyle())
+                            .foregroundStyle(LinearGradient(gradient: Gradient(colors: [.purple, .pink, .orange]), startPoint: .leading, endPoint: .trailing))
+                            .padding()
+                            .padding(.horizontal)
+                            .padding(.bottom, -30)
+                        
+                        Text("\(Int(loadingProgress * 100))%")
+                            .font(.caption)
+                            .foregroundStyle(Color.white.opacity(0.3))
+                            .padding()
+                            .padding(.bottom)
+                    }
+                }
             }
             .background(backColor)
             .navigationBarHidden(true)
@@ -231,11 +250,60 @@ struct PhotoLibraryView: View {
                 selectedAssets = []
             }
             .navigationDestination(isPresented: $presentSelectTemplateView) {
-                SelectTemplateView(selectedAssets: Array(selectedAssets))
+                SelectTemplateView(tabBarVisible: $tabBarVisible, selectedAssets: Array(selectedAssets))
+                    .customTabBarVisibility(.hidden, tabBarVisible: $tabBarVisible)
             }
             .fullScreenCover(isPresented: $presentSubscritionsCoverView) {
                 SubscritionsCoverView()
             }
+            .navigationDestination(isPresented: $presentSettingsView) {
+                SettingsView(tabBarVisible: $tabBarVisible)
+                    .customTabBarVisibility(.hidden, tabBarVisible: $tabBarVisible)
+            }
+        }
+    }
+    
+    func loadFullSizeImagesAndPrepareAssets() {
+        isLoadingFullSizeImages = true
+        loadingProgress = 0
+        
+        let totalAssets = Double(selectedAssets.count)
+        var loadedAssets = 0
+        
+        let group = DispatchGroup()
+        
+        for asset in selectedAssets {
+            group.enter()
+            
+            if asset.type == .photo {
+                photoLibraryViewModel.loadFullSizeImage(for: asset) { fullSizeImage in
+                    DispatchQueue.main.async {
+                        if let fullSizeImage = fullSizeImage {
+                            asset.fullSizeImage = fullSizeImage
+                            
+                            print("Thumbnail size: \(asset.thumbnail?.pngData()?.count ?? 0)")
+                            print("Full-size image: \(asset.fullSizeImage?.pngData()?.count ?? 0)")
+                        }
+                        loadedAssets += 1
+                        self.loadingProgress = Double(loadedAssets) / totalAssets
+                        group.leave()
+                    }
+                }
+            } else {
+                // For video assets, we don't need to load full-size images
+                loadedAssets += 1
+                self.loadingProgress = Double(loadedAssets) / totalAssets
+                group.leave()
+            }
+        }
+        
+        group.notify(queue: .main) {
+            self.isLoadingFullSizeImages = false
+            
+            // Force SwiftUI to update the view
+            self.selectedAssets = self.selectedAssets
+            
+            presentSelectTemplateView.toggle()
         }
     }
 }
@@ -270,7 +338,7 @@ class PhotoLibraryViewModel: ObservableObject {
         
         let fetchOptions = PHFetchOptions()
         fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-        fetchOptions.fetchLimit = 400
+        fetchOptions.fetchLimit = 250
         
         switch category {
         case .recent:
@@ -306,32 +374,57 @@ class PhotoLibraryViewModel: ObservableObject {
             }
             
             self.loadThumbnail(for: mediaAsset, at: index)
-            
-            if mediaAsset.type == .photo {
-                self.loadFullSizeImage(for: mediaAsset, at: index)
-            }
         }
     }
     
     private func loadThumbnail(for mediaAsset: MediaAsset, at index: Int) {
         guard let asset = mediaAsset.asset else { return }
-        
+
         let imageManager = PHImageManager.default()
         let thumbnailOptions = PHImageRequestOptions()
         thumbnailOptions.deliveryMode = .opportunistic
-        
+
         imageManager.requestImage(for: asset, targetSize: CGSize(width: 300, height: 300), contentMode: .aspectFill, options: thumbnailOptions) { [weak self] image, _ in
             DispatchQueue.main.async {
+                guard let self = self else { return }
+                // Ensure the index is within the bounds of the assets array
+                guard index < self.assets.count else {
+                    print("Index out of range for assets array")
+                    return
+                }
+
                 if let image = image {
-                    self?.assets[index].thumbnail = image
+                    self.assets[index].thumbnail = image
                 } else if asset.mediaType == .video {
-                    self?.generateVideoThumbnail(for: asset) { thumbnail in
+                    self.generateVideoThumbnail(for: asset) { thumbnail in
                         DispatchQueue.main.async {
-                            self?.assets[index].thumbnail = thumbnail
+                            // Recheck bounds when setting the video thumbnail
+                            guard index < self.assets.count else {
+                                print("Index out of range for assets array when setting video thumbnail")
+                                return
+                            }
+                            self.assets[index].thumbnail = thumbnail
                         }
                     }
                 }
             }
+        }
+    }
+    
+    func loadFullSizeImage(for mediaAsset: MediaAsset, completion: @escaping (UIImage?) -> Void) {
+        guard let asset = mediaAsset.asset else {
+            completion(nil)
+            return
+        }
+        
+        let imageManager = PHImageManager.default()
+        let fullSizeOptions = PHImageRequestOptions()
+        fullSizeOptions.deliveryMode = .highQualityFormat
+        fullSizeOptions.isNetworkAccessAllowed = true
+        fullSizeOptions.isSynchronous = false
+        
+        imageManager.requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: fullSizeOptions) { image, _ in
+            completion(image)
         }
     }
     
@@ -345,6 +438,11 @@ class PhotoLibraryViewModel: ObservableObject {
         
         imageManager.requestImage(for: asset, targetSize: PHImageManagerMaximumSize, contentMode: .aspectFit, options: fullSizeOptions) { [weak self] image, _ in
             DispatchQueue.main.async {
+                guard index < self?.assets.count ?? 0 else {
+                    print("Index out of range for assets array")
+                    return
+                }
+                
                 if let image = image {
                     self?.assets[index].fullSizeImage = image
                 }
@@ -392,9 +490,20 @@ class PhotoLibraryViewModel: ObservableObject {
             }
         }
     }
+    
+    func loadNextBatch(count: Int = 20) {
+        guard let fetchResult = fetchResult else { return }
+        let endIndex = min(assets.count + count, fetchResult.count)
+        for index in assets.count..<endIndex {
+            let asset = fetchResult.object(at: index)
+            let mediaAsset = MediaAsset(asset: asset)
+            self.assets.append(mediaAsset)
+            self.loadThumbnail(for: mediaAsset, at: index)
+        }
+    }
 }
 
-struct MediaAsset: Identifiable, Hashable {
+class MediaAsset: Identifiable, Hashable {
     var id = UUID()
     let asset: PHAsset?
     var thumbnail: UIImage? = nil

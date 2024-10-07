@@ -11,6 +11,15 @@ import AVFoundation
 import CoreMedia
 import QuartzCore
 
+
+enum ConstructionError: Error {
+    case invalidImage
+    case invalidURL
+    case invalidExportSession
+    case exportFailed
+}
+
+
 //MARK: - Main Manager
 final class VideoRenderingManager {
     
@@ -799,7 +808,6 @@ final class VideoRenderingManager {
                 } else if template.id == Template.list[3].id {
                     
                     //MARK: - Template 4
-                    
                     let assetDuration = CMTime(seconds: durations[index], preferredTimescale: 600)
                     let timeRange = CMTimeRangeMake(start: .zero, duration: min(assetDuration, asset.duration))
                     try compositionVideoTrack?.insertTimeRange(timeRange, of: videoTrack, at: insertTime)
@@ -857,39 +865,91 @@ final class VideoRenderingManager {
                     
                 } else {
                     
+                    
+                    
                     //MARK: - Template 5
-                    let assetDuration = CMTime(seconds: durations[index], preferredTimescale: 600)
-                    let timeRange = CMTimeRangeMake(start: .zero, duration: min(assetDuration, asset.duration))
-                    try compositionVideoTrack?.insertTimeRange(timeRange, of: videoTrack, at: insertTime)
-                    
-                    let instruction = AVMutableVideoCompositionInstruction()
-                    instruction.timeRange = CMTimeRangeMake(start: insertTime, duration: timeRange.duration)
-                    
-                    let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: compositionVideoTrack!)
-                    let assetTrackSize = videoTrack.naturalSize.applying(videoTrack.preferredTransform)
-                    let scaleX = outputSize.width / abs(assetTrackSize.width)
-                    let scaleY = outputSize.height / abs(assetTrackSize.height)
-                    let scale = max(scaleX, scaleY)
-                    var transform = CGAffineTransform(scaleX: scale, y: scale)
-                    let xTranslation = (outputSize.width - assetTrackSize.width * scale) / 2
-                    let yTranslation = (outputSize.height - assetTrackSize.height * scale) / 2
-                    transform = transform.translatedBy(x: xTranslation, y: yTranslation)
-                    
-                    transform = transform.concatenating(videoTrack.preferredTransform)
-                    
-                    layerInstruction.setTransform(transform, at: .zero)
-                    instruction.layerInstructions = [layerInstruction]
-                    instructions.append(instruction)
-                    
-                    if includeOriginalAudio, let audioTrack = asset.tracks(withMediaType: .audio).first {
-                        do {
-                            try compositionAudioTrack?.insertTimeRange(timeRange, of: audioTrack, at: insertTime)
-                        } catch {
-                            print("Error inserting original audio track: \(error)")
+                    if index == 12 || index == 14 || index == 16 || index == 18 || index == 20 || index == 22 {
+                        guard let compositionVideoTrack = compositionVideoTrack else {
+                            continue
                         }
+                        
+                        let assetDuration = CMTime(seconds: durations[index], preferredTimescale: 600)
+                        let timeRange = CMTimeRangeMake(start: .zero, duration: min(assetDuration, asset.duration))
+                        try compositionVideoTrack.insertTimeRange(timeRange, of: videoTrack, at: insertTime)
+                        
+                        let instruction = AVMutableVideoCompositionInstruction()
+                        instruction.timeRange = CMTimeRangeMake(start: insertTime, duration: timeRange.duration)
+                        
+                        let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: compositionVideoTrack)
+                        
+                        let assetTrackSize = videoTrack.naturalSize.applying(videoTrack.preferredTransform)
+                        let scaleX = outputSize.width / abs(assetTrackSize.width)
+                        let scaleY = outputSize.height / abs(assetTrackSize.height)
+                        let scale = max(scaleX, scaleY)
+                        
+                        // Create keyframe animations for zoom effect
+                        let zoomDuration = timeRange.duration
+                        let zoomStartTime = insertTime
+                        let zoomEndTime = CMTimeAdd(zoomStartTime, zoomDuration)
+                        
+                        var startTransform = CGAffineTransform(scaleX: scale, y: scale)
+                        var endTransform = CGAffineTransform(scaleX: scale * 1.1, y: scale * 1.1)
+                        
+                        // Center the video
+                        let startXTranslation = (outputSize.width - assetTrackSize.width * scale) / 2
+                        let startYTranslation = (outputSize.height - assetTrackSize.height * scale) / 2
+                        startTransform = startTransform.translatedBy(x: startXTranslation, y: startYTranslation)
+                        
+                        let endXTranslation = (outputSize.width - assetTrackSize.width * scale * 1.1) / 2
+                        let endYTranslation = (outputSize.height - assetTrackSize.height * scale * 1.1) / 2
+                        endTransform = endTransform.translatedBy(x: endXTranslation, y: endYTranslation)
+                        
+                        // Apply zoom effect
+                        layerInstruction.setTransformRamp(fromStart: startTransform, toEnd: endTransform, timeRange: CMTimeRange(start: zoomStartTime, duration: zoomDuration))
+                        
+                        instruction.layerInstructions = [layerInstruction]
+                        instructions.append(instruction)
+                        
+                        if let audioTrack = asset.tracks(withMediaType: .audio).first {
+                            let audioCompositionTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) ?? composition.tracks(withMediaType: .audio)[index]
+                            try audioCompositionTrack.insertTimeRange(timeRange, of: audioTrack, at: insertTime)
+                        }
+                        
+                        insertTime = CMTimeAdd(insertTime, timeRange.duration)
+                    } else {
+                        let assetDuration = CMTime(seconds: durations[index], preferredTimescale: 600)
+                        let timeRange = CMTimeRangeMake(start: .zero, duration: min(assetDuration, asset.duration))
+                        try compositionVideoTrack?.insertTimeRange(timeRange, of: videoTrack, at: insertTime)
+                        
+                        let instruction = AVMutableVideoCompositionInstruction()
+                        instruction.timeRange = CMTimeRangeMake(start: insertTime, duration: timeRange.duration)
+                        
+                        let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: compositionVideoTrack!)
+                        let assetTrackSize = videoTrack.naturalSize.applying(videoTrack.preferredTransform)
+                        let scaleX = outputSize.width / abs(assetTrackSize.width)
+                        let scaleY = outputSize.height / abs(assetTrackSize.height)
+                        let scale = max(scaleX, scaleY)
+                        var transform = CGAffineTransform(scaleX: scale, y: scale)
+                        let xTranslation = (outputSize.width - assetTrackSize.width * scale) / 2
+                        let yTranslation = (outputSize.height - assetTrackSize.height * scale) / 2
+                        transform = transform.translatedBy(x: xTranslation, y: yTranslation)
+                        
+                        transform = transform.concatenating(videoTrack.preferredTransform)
+                        
+                        layerInstruction.setTransform(transform, at: .zero)
+                        instruction.layerInstructions = [layerInstruction]
+                        instructions.append(instruction)
+                        
+                        if includeOriginalAudio, let audioTrack = asset.tracks(withMediaType: .audio).first {
+                            do {
+                                try compositionAudioTrack?.insertTimeRange(timeRange, of: audioTrack, at: insertTime)
+                            } catch {
+                                print("Error inserting original audio track: \(error)")
+                            }
+                        }
+                        
+                        insertTime = CMTimeAdd(insertTime, timeRange.duration)
                     }
-                    
-                    insertTime = CMTimeAdd(insertTime, timeRange.duration)
                 }
                 
                 
@@ -1834,103 +1894,5 @@ extension UIImage {
 
 
 
-
-
-
-
-/*
- currently, the function works so the program goes through all the assts and checks wheter they are images or so. the parts with images are split and combined. I want to make it so that a particular video will be created for a particular UIImage. This approach will help to track slide indexes more effeciently: "func createFinalVideo(from mediaAssets: [MediaAsset], template: Template, outputSize: CGSize, frameRate: Int32 = 30, outputFileName: String, audioURL: URL?, audioStartTime: Double, audioEndTime: Double, progressHandler: @escaping (Double) -> Void, completion: @escaping (Result<URL, Error>) -> Void) {
-         var allAssets: [AVAsset] = []
-         var allDurations: [Double] = []
-         tempURLs = []
-         var currentImages: [UIImage] = []
-         var currentImageDurations: [Double] = []
-         
-         let totalSteps = Double(template.slides.count + 1) // +1 for final combination
-         var currentStep = 0.0
-         
-         func updateProgress(_ stepProgress: Double) {
-             let overallProgress = (currentStep + stepProgress) / totalSteps
-             DispatchQueue.main.async {
-                 progressHandler(overallProgress)
-             }
-         }
-         
-         for (index, slide) in template.slides.enumerated() {
-             if index >= mediaAssets.count {
-                 break
-             }
-             
-             let mediaAsset = mediaAssets[index]
-             
-             if slide.isVideo {
-                 if !currentImages.isEmpty {
-                     do {
-                         let imagesVideoURL = try createVideoFromImages(images: currentImages, durations: currentImageDurations, outputSize: outputSize, frameRate: frameRate, outputFileName: "temp_images_\(allAssets.count)", progressHandler: { imageProgress in
-                             updateProgress(imageProgress / Double(totalSteps))
-                         })
-                         let imagesVideoAsset = AVAsset(url: imagesVideoURL)
-                         allAssets.append(imagesVideoAsset)
-                         allDurations.append(currentImageDurations.reduce(0, +))
-                         tempURLs.append(imagesVideoURL)
-                         currentImages = []
-                         currentImageDurations = []
-                     } catch {
-                         completion(.failure(error))
-                         return
-                     }
-                 }
-                 
-                 if let videoAsset = mediaAsset.videoAsset {
-                     allAssets.append(videoAsset)
-                     allDurations.append(slide.duration)
-                 }
-             } else {
-                 if let image = mediaAsset.fullSizeImage ?? mediaAsset.thumbnail {
-                     currentImages.append(image)
-                     currentImageDurations.append(slide.duration)
-                 }
-             }
-             
-             currentStep += 1
-             updateProgress(0)
-         }
-         
-         if !currentImages.isEmpty {
-             do {
-                 let imagesVideoURL = try createVideoFromImages(images: currentImages, durations: currentImageDurations, outputSize: outputSize, frameRate: frameRate, outputFileName: "temp_images_\(allAssets.count)", progressHandler: { imageProgress in
-                     updateProgress(imageProgress / Double(totalSteps))
-                 })
-                 let imagesVideoAsset = AVAsset(url: imagesVideoURL)
-                 allAssets.append(imagesVideoAsset)
-                 allDurations.append(currentImageDurations.reduce(0, +))
-                 tempURLs.append(imagesVideoURL)
-             } catch {
-                 completion(.failure(error))
-                 return
-             }
-         }
-         
-         combineVideos(template: template, videoAssets: allAssets, durations: allDurations, outputSize: outputSize, outputFileName: outputFileName, audioURL: audioURL, audioStartTime: audioStartTime, audioEndTime: audioEndTime, includeOriginalAudio: audioURL != nil, progressHandler: { combineProgress in
-             updateProgress(combineProgress)
-         }) { result in
-             for url in self.tempURLs {
-                 try? FileManager.default.removeItem(at: url)
-             }
-             
-             switch result {
-             case .success(let finalVideoURL):
-                 updateProgress(0.99)
-                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                     completion(.success(finalVideoURL))
-                     updateProgress(1)
-                     self.tempURLs.append(finalVideoURL)
-                 }
-             case .failure(let error):
-                 completion(.failure(error))
-             }
-         }
-     }"
- */
 
 

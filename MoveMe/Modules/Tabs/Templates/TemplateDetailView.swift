@@ -13,14 +13,22 @@ struct TemplateDetailView: View {
     
     var template: Template
     
-    @State private var player: AVPlayer?
+    @Binding var tabBarVisible: Bool
     
+    @State private var player: AVPlayer?
     @State private var presentCreateReelPhotoLibraryView = false
     
     @Environment(\.presentationMode) var presentationMode
     
     var body: some View {
         ZStack {
+            Image(template.iconName)
+                .resizable()
+                .scaledToFill()
+                .frame(width: UIScreen.main.bounds.width)
+                .frame(height: UIScreen.main.bounds.height)
+                .ignoresSafeArea(.all)
+            
             VStack {
                 if let player = player {
                     FullScreenVideoPlayer(player: player)
@@ -31,15 +39,12 @@ struct TemplateDetailView: View {
                             player.play()
                         }
                         .disabled(true)
-                } else {
-                    Image(template.iconName)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: UIScreen.main.bounds.width)
-                        .frame(height: UIScreen.main.bounds.height)
                 }
             }
             .ignoresSafeArea(.all)
+            .edgesIgnoringSafeArea(.all)
+            .frame(width: UIScreen.main.bounds.width)
+            .frame(height: UIScreen.main.bounds.height)
             
             VStack(alignment: .leading) {
                 HStack {}
@@ -50,6 +55,10 @@ struct TemplateDetailView: View {
                     .padding(.top, -16)
                 
                 Button {
+                    withAnimation {
+                        tabBarVisible = true
+                    }
+                    
                     presentationMode.wrappedValue.dismiss()
                 } label: {
                     Image(systemName: "chevron.backward")
@@ -139,10 +148,15 @@ struct TemplateDetailView: View {
         }
         .onAppear {
             setupVideoPlayer()
+            tabBarVisible = false
+            if let player = player {
+                player.play()
+            }
         }
         .onDisappear {
             NotificationCenter.default.removeObserver(self)
             player?.pause()
+            player?.volume = 0
             player = nil
         }
     }
@@ -156,11 +170,10 @@ struct TemplateDetailView: View {
             
             let playerItem = AVPlayerItem(url: videoURL)
             player = AVPlayer(playerItem: playerItem)
+            player?.play()
             
-            NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: playerItem, queue: .main) { _ in
-                player?.seek(to: CMTime.zero)
-                player?.play()
-            }
+        } else {
+            print("Example was not found.")
         }
     }
 }
@@ -180,11 +193,17 @@ struct FullScreenVideoPlayer: UIViewRepresentable {
 class FullScreenVideoPlayerUIView: UIView {
     private let playerLayer = AVPlayerLayer()
     
+    private var player: AVPlayer
+    
     init(player: AVPlayer) {
+        self.player = player
         super.init(frame: .zero)
+    
         playerLayer.player = player
         playerLayer.videoGravity = .resizeAspectFill
         layer.addSublayer(playerLayer)
+        playerLayer.frame = bounds
+        player.addObserver(self, forKeyPath: #keyPath(AVPlayer.status), options: [.new, .initial], context: nil)
     }
     
     required init?(coder: NSCoder) {
@@ -194,6 +213,23 @@ class FullScreenVideoPlayerUIView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         playerLayer.frame = bounds
+        print(" layer frame: \(frame)")
+        print("Player layer frame: \(playerLayer.frame)")
+    }
+    
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        if keyPath == #keyPath(AVPlayer.status) {
+            switch player.status {
+            case .readyToPlay:
+                print("Player is ready to play")
+            case .failed:
+                print("Player failed: \(player.error?.localizedDescription ?? "unknown error")")
+            case .unknown:
+                print("Player status is unknown")
+            @unknown default:
+                break
+            }
+        }
     }
 }
 

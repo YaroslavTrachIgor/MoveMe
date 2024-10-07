@@ -11,6 +11,7 @@ import FirebaseStorage
 import AVFAudio
 import AVFoundation
 
+//MARK: - Track model
 struct Track: Identifiable {
     let id = UUID()
     let title: String
@@ -27,35 +28,29 @@ struct Track: Identifiable {
     }
 }
 
-struct MusicLibraryView: View {
+
+//MARK: - Suggested Tracks
+extension Track {
     
-    var onAudioSelected: (URL, Double, Double, String) -> Void
+    static func getSuggestedTrack(with template: Template) -> [Track] {
+        switch template.name {
+        case "Template #1":
+            return suggestedTracks1
+        case "Template #2":
+            return suggestedTracks2
+        case "Template #3":
+            return suggestedTracks3
+        case "Template #4":
+            return suggestedTracks4
+        case "Template #5":
+            return suggestedTracks5
+        default:
+            return suggestedTracks1
+        }
+    }
     
-    @Environment(\.presentationMode) var presentationMode
     
-    @State private var selectedTrack: Track? = nil
-    @State private var isPlaying: Bool = false
-    @State private var playbackTime: Double = 0.0
-    
-    @State private var isLoading: Bool = true
-    
-    @State private var audioPlayer: AVAudioPlayer?
-    @State private var avPlayer: AVPlayer?
-    @State private var playerItem: AVPlayerItem?
-    @State private var playerTimeObserver: Any?
-    @State private var timer: Timer?
-    
-    @State private var presentSelectAudioStartEndTimeView: Bool = false
-    
-    @State private var startTime: Double = 0.0
-    @State private var endTime: Double = 0.0
-    
-    @State private var searchText: String = ""
-    @State private var searchedTracks: [Track] = []
-    
-    private let shazamAPIManager = ShazamAPIManager()
-    
-    let tracks = [
+    static let suggestedTracks1 = [
         Track(title: "National Sweetheart",
               artist: "Copy of Tasty Waves",
               duration: 169,
@@ -84,9 +79,173 @@ struct MusicLibraryView: View {
               artist: "Rihanna",
               duration: 246,
               imageName: "music.note",
-              filePath: "spotifydown.com - Pon de Replay.mp3", 
+              filePath: "spotifydown.com - Pon de Replay.mp3",
               isShazamTrack: false)
     ]
+    static let suggestedTracks2 = [
+        Track(title: "Beach House",
+              artist: "Bobby Renz",
+              duration: 100,
+              imageName: "music.note",
+              filePath: "Beach House - Text Me Records _ Bobby Renz.mp3",
+              isShazamTrack: false),
+        Track(title: "Mountain",
+              artist: "Bobby Renz",
+              duration: 113,
+              imageName: "music.note",
+              filePath: "Copy of Mountain - Text Me Records _ Bobby Renz.mp3",
+              isShazamTrack: false),
+        Track(title: "Never Play",
+              artist: "Jeremy Blake",
+              duration: 250,
+              imageName: "music.note",
+              filePath: "Copy of Never Play - Jeremy Blake.mp3",
+              isShazamTrack: false),
+        Track(title: "Rockville",
+              artist: "Patrick Patrikios",
+              duration: 169,
+              imageName: "music.note",
+              filePath: "Copy of Rockville - Patrick Patrikios.mp3",
+              isShazamTrack: false),
+        Track(title: "Sunspots",
+              artist: "Jeremy Blake",
+              duration: 342,
+              imageName: "music.note",
+              filePath: "Sunspots - Jeremy Blake.mp3",
+              isShazamTrack: false),
+    ]
+    static let suggestedTracks3 = [
+        Track(title: "Lawrence",
+              artist: "TrackTribe",
+              duration: 169,
+              imageName: "music.note",
+              filePath: "Copy of Lawrence - TrackTribe.mp3",
+              isShazamTrack: false),
+        Track(title: "National Sweetheart",
+              artist: "Copy of Tasty Waves",
+              duration: 169,
+              imageName: "music.note",
+              filePath: "Copy of Tasty Waves - National Sweetheart.mp3",
+              isShazamTrack: false),
+        Track(title: "Grand Avenue",
+              artist: "Bobby Renz",
+              duration: 125,
+              imageName: "music.note",
+              filePath: "Grand Avenue - Text Me Records _ Bobby Renz.mp3",
+              isShazamTrack: false),
+        Track(title: "Mountain",
+              artist: "Bobby Renz",
+              duration: 113,
+              imageName: "music.note",
+              filePath: "Copy of Mountain - Text Me Records _ Bobby Renz.mp3",
+              isShazamTrack: false),
+        Track(title: "Rockville",
+              artist: "Patrick Patrikios",
+              duration: 169,
+              imageName: "music.note",
+              filePath: "Copy of Rockville - Patrick Patrikios.mp3",
+              isShazamTrack: false)
+    ]
+    static let suggestedTracks4 = [
+        Track(title: "Grand Avenue",
+              artist: "Bobby Renz",
+              duration: 125,
+              imageName: "music.note",
+              filePath: "Grand Avenue - Text Me Records _ Bobby Renz.mp3",
+              isShazamTrack: false),
+        Track(title: "Hideout",
+              artist: "Bobby Renz",
+              duration: 133,
+              imageName: "music.note",
+              filePath: "Hideout - Text Me Records _ Bobby Renz.mp3",
+              isShazamTrack: false),
+        Track(title: "Never Play",
+              artist: "Jeremy Blake",
+              duration: 250,
+              imageName: "music.note",
+              filePath: "Copy of Never Play - Jeremy Blake.mp3",
+              isShazamTrack: false),
+        Track(title: "Rockville",
+              artist: "Patrick Patrikios",
+              duration: 169,
+              imageName: "music.note",
+              filePath: "Copy of Rockville - Patrick Patrikios.mp3",
+              isShazamTrack: false),
+        Track(title: "National Sweetheart",
+              artist: "Copy of Tasty Waves",
+              duration: 169,
+              imageName: "music.note",
+              filePath: "Copy of Tasty Waves - National Sweetheart.mp3",
+              isShazamTrack: false),
+    ]
+    static let suggestedTracks5 = [
+        Track(title: "Template 5",
+              artist: "Unknown Artist",
+              duration: 14,
+              imageName: "music.note",
+              filePath: "5_no ID - zuubamusic.mp3",
+              isShazamTrack: false)
+    ]
+}
+
+
+//MARK: - Main View
+struct MusicLibraryView: View {
+    
+    var template: Template
+    var onAudioSelected: (URL, Double, Double, String) -> Void
+    
+    @Environment(\.presentationMode) var presentationMode
+    
+    @State private var selectedTrack: Track? = nil
+    @State private var isPlaying: Bool = false
+    @State private var playbackTime: Double = 0.0
+    
+    @State private var isLoading: Bool = true
+    
+    @State private var audioPlayer: AVAudioPlayer?
+    @State private var avPlayer: AVPlayer?
+    @State private var playerItem: AVPlayerItem?
+    @State private var playerTimeObserver: Any?
+    @State private var timer: Timer?
+    
+    @State private var presentSelectAudioStartEndTimeView: Bool = false
+    
+    @State private var categories = ["Recommended", "Popular"]
+    @State private var selectedCategory = "Recommended"
+    
+    @State private var startTime: Double = 0.0
+    @State private var endTime: Double = 0.0
+    
+    @State private var isSearching: Bool = false
+    @State private var searchText: String = ""
+    @State private var searchedTracks: [Track] = []
+    @State private var updateRecommendedTracks: Bool = false
+    
+    private let shazamAPIManager = ShazamAPIManager()
+    
+    var tracks: [Track] {
+        return Track.getSuggestedTrack(with: template)
+    }
+    
+    var tracksToDisplay: [Track] {
+        switch selectedCategory {
+        case "Recommended":
+            if searchText.isEmpty {
+                return tracks
+            } else {
+                if updateRecommendedTracks {
+                    return searchedTracks
+                } else {
+                    return tracks
+                }
+            }
+        case "Popular":
+            return searchedTracks
+        default:
+            return []
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -148,60 +307,111 @@ struct MusicLibraryView: View {
                     TextField("Search Popular Tracks", text: $searchText, onCommit: searchTracks)
                         .textFieldStyle(PlainTextFieldStyle())
                         .padding(.all, 8)
+                        .onSubmit {
+                            withAnimation(.easeOut(duration: 0.3)) {
+                                isSearching = true
+                                
+                                if selectedCategory == "Recommended" {
+                                    updateRecommendedTracks = true
+                                }
+                            }
+                        }
                 }
                 .background(secondaryBackColor)
                 .cornerRadius(25)
-                .padding(.horizontal, 18)
-                .padding(.top, 10)
+                .padding(.horizontal, 12)
+                .padding(.top, 16)
+                
+                ScrollView(.horizontal) {
+                    HStack {
+                        ForEach(categories, id: \.self) { category in
+                            VStack {
+                                Text(category).tag(category)
+                                    .font(.system(size: 14))
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(selectedCategory == category ? Color.white : Color.secondary.opacity(0.3))
+                                    .padding(9)
+                            }
+                            .background(selectedCategory == category ? Color.clear : Color.secondary.opacity(0.1))
+                            .overlay(content: {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(selectedCategory == category ? foreColor : Color.clear, lineWidth: 3)
+                            })
+                            .cornerRadius(10)
+                            .onTapGesture {
+                                withAnimation {
+                                    selectedCategory = category
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding()
+                .padding(.bottom, -22)
+                .onChange(of: selectedCategory) { newValue in
+                    if newValue == "Popular" && searchedTracks.isEmpty {
+                        searchTracks()
+                    }
+                }
                 
                 VStack {
-                    List(searchedTracks.isEmpty ? tracks : searchedTracks) { track in
+                    if isSearching {
                         HStack {
-                            ZStack {
-                                Image(systemName: track.imageName)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 30, height: 30)
-                                    .foregroundStyle(foreColor)
-                            }
-                            .frame(width: 50, height: 50)
-                            .background(foreColor.opacity(0.12))
-                            .cornerRadius(8)
-                            .padding(.trailing, 8)
-                            
-                            VStack(alignment: .leading) {
-                                Text(track.title)
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                Text(track.artist)
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(1.5)
+                                .frame(height: 50)
+                        }
+                        .frame(maxHeight: .infinity)
+                    } else {
+                        List(tracksToDisplay) { track in
+                            HStack {
+                                ZStack {
+                                    Image(systemName: track.imageName)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 30, height: 30)
+                                        .foregroundStyle(foreColor)
+                                }
+                                .frame(width: 50, height: 50)
+                                .background(foreColor.opacity(0.12))
+                                .cornerRadius(8)
+                                .padding(.trailing, 8)
+                                
+                                VStack(alignment: .leading) {
+                                    Text(track.title)
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                    Text(track.artist)
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+                                }
+                                
+                                Spacer()
+                                
+                                Text(track.formattedDuration)
                                     .font(.subheadline)
                                     .foregroundColor(.gray)
                             }
-                            
-                            Spacer()
-                            
-                            Text(track.formattedDuration)
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            if selectedTrack?.id != track.id {
-                                stopPlayback()
-                                selectedTrack = track
-                                playTrack(track)
-                                endTime = Double(track.duration)
-                            } else {
-                                togglePlayback()
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if selectedTrack?.id != track.id {
+                                    stopPlayback()
+                                    selectedTrack = track
+                                    playTrack(track)
+                                    endTime = Double(track.duration)
+                                } else {
+                                    togglePlayback()
+                                }
                             }
+                            .background(backColor.edgesIgnoringSafeArea(.all))
+                            .listRowBackground(backColor)
+                            .listRowSeparator(.hidden)
                         }
+                        .listStyle(PlainListStyle())
                         .background(backColor.edgesIgnoringSafeArea(.all))
-                        .listRowBackground(backColor)
-                        .listRowSeparator(.hidden)
+                        .padding(.top, 12)
                     }
-                    .listStyle(PlainListStyle())
-                    .background(backColor.edgesIgnoringSafeArea(.all))
-                    .padding(.top, 12)
                 }
                 
                 if let track = selectedTrack {
@@ -275,7 +485,7 @@ struct MusicLibraryView: View {
             if track.isShazamTrack {
                 self.setupAVPlayer(with: track.filePath)
             } else {
-                self.getAudioFromFirebase(path: track.filePath) { result in
+                getAudioFromFirebase(path: track.filePath) { result in
                     switch result {
                     case .success(let url):
                         self.setupAVAudioPlayer(with: url)
@@ -409,24 +619,6 @@ struct MusicLibraryView: View {
         let minutes = Int(seconds) / 60
         let seconds = Int(seconds) % 60
         return String(format: "%02d:%02d", minutes, seconds)
-    }
-    
-    func getAudioFromFirebase(path: String, completion: @escaping (Result<URL, Error>) -> Void) {
-        let storage = Storage.storage()
-        let storageRef = storage.reference()
-        let audioRef = storageRef.child(path)
-        
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let filePath = documentsPath.appendingPathComponent("tempAudio.mp3")
-        print(filePath)
-        
-        audioRef.write(toFile: filePath) { url, error in
-            if let error = error {
-                completion(.failure(error))
-            } else if let url = url {
-                completion(.success(url))
-            }
-        }
     }
     
     
@@ -580,10 +772,11 @@ struct MusicLibraryView: View {
     }
     
     
-    
+    //MARK: - Search Shazam Tracks
     private func searchTracks() {
         guard !searchText.isEmpty else { return }
         isLoading = true
+        isSearching = true
         
         shazamAPIManager.searchTrack(term: searchText) { result in
             DispatchQueue.main.async {
@@ -636,12 +829,20 @@ struct MusicLibraryView: View {
                     group.notify(queue: .main) {
                         self.searchedTracks = tempTracks
                         self.isLoading = false
+                        
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            isSearching = false
+                        }
                     }
                     
                 case .failure(let error):
                     print("Error fetching tracks: \(error.localizedDescription)")
                     self.searchedTracks = []
                     self.isLoading = false
+                    
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        isSearching = false
+                    }
                 }
             }
         }
@@ -655,7 +856,7 @@ struct MusicLibraryView: View {
             if track.isShazamTrack {
                 self.setupAVPlayer(with: track.filePath)
             } else {
-                self.getAudioFromFirebase(path: track.filePath) { result in
+                getAudioFromFirebase(path: track.filePath) { result in
                     switch result {
                     case .success(let url):
                         self.setupAVAudioPlayer(with: url)
@@ -670,6 +871,8 @@ struct MusicLibraryView: View {
         }
     }
     
+    
+    //MARK: - Add Audio to Video
     private func addAudioWithAdjustedTime() {
         guard let track = selectedTrack else { return }
         
@@ -795,6 +998,8 @@ struct TrackInfoView: View {
     }
 }
 
+
+//MARK: - Playback Control View
 struct PlaybackControlView: View {
     @Binding var isPlaying: Bool
     let togglePlayback: () -> Void
@@ -805,6 +1010,27 @@ struct PlaybackControlView: View {
                 .resizable()
                 .frame(width: 44, height: 44)
                 .foregroundColor(.white)
+        }
+    }
+}
+
+
+
+//MARK: - Get Audio from Firebase
+func getAudioFromFirebase(path: String, completion: @escaping (Result<URL, Error>) -> Void) {
+    let storage = Storage.storage()
+    let storageRef = storage.reference()
+    let audioRef = storageRef.child(path)
+    
+    let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    let filePath = documentsPath.appendingPathComponent("tempAudio.mp3")
+    print(filePath)
+    
+    audioRef.write(toFile: filePath) { url, error in
+        if let error = error {
+            completion(.failure(error))
+        } else if let url = url {
+            completion(.success(url))
         }
     }
 }

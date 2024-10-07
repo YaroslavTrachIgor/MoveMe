@@ -14,16 +14,21 @@ import CoreImage.CIFilterBuiltins
 
 struct VideoEditingView: View {
     
-    @State private var selectedAssets: Set<MediaAsset> = []
-    
     @State var selectedAssetsArray: [MediaAsset]
+    
+    @State var template: Template
+    
+    @State var audioURL: URL?
+    @State var audioName: String?
+    @State var audioStartTime: Double = 0.0
+    @State var audioEndTime: Double = 0.0
+    
+    @State private var selectedAssets: Set<MediaAsset> = []
     
     @State private var selectedAsset: MediaAsset? = nil
     @State private var videoPlayer: AVPlayer?
     @State private var isRendering: Bool = false
     @State private var renderProgress: Double = 0.0
-    
-    @State var template: Template
     
     @State private var isCutting = false
     @State private var selectedCuttingAsset: MediaAsset? = nil
@@ -39,10 +44,7 @@ struct VideoEditingView: View {
     @State private var showVideoPlayer = false
     @State private var tempURLs: [URL] = []
     
-    @State private var audioURL: URL?
-    @State private var audioName: String?
-    @State private var audioStartTime: Double = 0.0
-    @State private var audioEndTime: Double = 0.0
+    
     
     var body: some View {
         ZStack {
@@ -224,7 +226,7 @@ struct VideoEditingView: View {
         .background(backColor.edgesIgnoringSafeArea(.all))
         .navigationBarHidden(true)
         .fullScreenCover(isPresented: $presentAddPhotosView, content: {
-            AddPhotosView { addedPhotos in
+            AddPhotosView() { addedPhotos in
                 addAssets(assets: addedPhotos)
             }
         })
@@ -246,7 +248,7 @@ struct VideoEditingView: View {
             SaveVideoView(audioURL: audioURL, selectedAssets: selectedAssetsArray, template: template)
         }
         .navigationDestination(isPresented: $presentMusicLibraryView) {
-            MusicLibraryView { url, startTime, endTime, audioName in
+            MusicLibraryView(template: template) { url, startTime, endTime, audioName in
                 self.audioURL = url
                 self.audioStartTime = startTime
                 self.audioEndTime = endTime

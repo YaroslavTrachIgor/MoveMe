@@ -10,11 +10,16 @@ import SwiftUI
 
 struct SelectTemplateView: View {
     
+    @Binding var tabBarVisible: Bool
+    
     @State var assets: [MediaAsset] = []
     @State var selectedAssets: [MediaAsset] = []
     @State private var croppedAssets: [MediaAsset] = []
     
     @State private var selectedTemplate: Template = Template(id: UUID(), name: "", iconName: "", items: 0, duration: 0, example: nil, slides: [])
+    
+    @State private var isCropping = false
+    @State private var croppingProgress: Double = 0
     
     @State private var presentSubscritionsCoverView = false
     @State private var presentVideoEditingView = false
@@ -31,6 +36,7 @@ struct SelectTemplateView: View {
                 HStack {
                     Button {
                         presentationMode.wrappedValue.dismiss()
+                        tabBarVisible = true
                     } label: {
                         Image(systemName: "chevron.backward")
                             .font(.title3)
@@ -160,7 +166,7 @@ struct SelectTemplateView: View {
                             .resizable()
                             .aspectRatio(contentMode: .fill)
                             .frame(height: 300)
-                            .frame(width: UIScreen.main.bounds.width - 32)
+                            .frame(width: UIScreen.main.bounds.width - 20)
                             .cornerRadius(16)
                             .overlay(
                                 Text("Try Now")
@@ -267,6 +273,7 @@ struct SelectTemplateView: View {
                         }
                     }
                     .padding(.horizontal, 16)
+                    .padding(.bottom, 100)
                     .onAppear {
                         assets = selectedAssets
                     }
@@ -288,29 +295,53 @@ struct SelectTemplateView: View {
                                 .ignoresSafeArea(.all)
                         }
                     
+                    
+                    
+                    let enabled = selectedTemplate == Template.list[4] ? assets.count == 12 : assets.count == selectedTemplate.items
+                    
                     Button(action: {
-                        cropSelectedVideos {
-                            selectedAssets = orderAssetsAccordingToSlides()
-                            presentVideoEditingView.toggle()
-                        }
+                        prepareAssetsForEditing()
                     }, label: {
                         Text("Create Reel")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(assets.count != (selectedTemplate.items) ? Color(.systemGray3) : Color.white)
+                            .foregroundStyle(!enabled ? Color(.systemGray3) : Color.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
-                            .background(assets.count != (selectedTemplate.items) ? Color(.systemGray) : foreColor)
+                            .background(!enabled ? Color(.systemGray) : foreColor)
                             .cornerRadius(18)
-                            .shadow(color: assets.count != (selectedTemplate.items) ? Color.clear : foreColor.opacity(0.2), radius: 10)
+                            .shadow(color: !enabled ? Color.clear : foreColor.opacity(0.2), radius: 10)
                     })
-                    .disabled(assets.count != (selectedTemplate.items))
+                    .disabled(!enabled)
                     .padding(.all, 12)
+                    .padding(.horizontal, 12)
                     .padding(.bottom, 46)
                     .padding(.top, -8)
                 }
                 .ignoresSafeArea(.all)
                 .padding(.bottom, -60)
                 .edgesIgnoringSafeArea(.bottom)
+            }
+            
+            if isCropping {
+                backColor.opacity(0.5)
+                
+                BlurView(style: .dark)
+                    .edgesIgnoringSafeArea(.all)
+                
+                VStack {
+                    ProgressView("", value: croppingProgress, total: 1.0)
+                        .progressViewStyle(LinearProgressViewStyle())
+                        .foregroundStyle(LinearGradient(gradient: Gradient(colors: [.purple, .pink, .orange]), startPoint: .leading, endPoint: .trailing))
+                        .padding()
+                        .padding(.horizontal)
+                        .padding(.bottom, -30)
+                    
+                    Text("\(Int(croppingProgress * 100))%")
+                        .font(.caption)
+                        .foregroundStyle(Color.white.opacity(0.3))
+                        .padding()
+                        .padding(.bottom)
+                }
             }
         }
         .onAppear {
@@ -325,6 +356,9 @@ struct SelectTemplateView: View {
         }
         .fullScreenCover(isPresented: $presentSubscritionsCoverView) {
             SubscritionsCoverView()
+        }
+        .onAppear {
+            tabBarVisible = false
         }
     }
     
@@ -348,7 +382,7 @@ struct SelectTemplateView: View {
                         .padding(.trailing, 3)
                         .padding(.leading, -2)
                 }
-                .frame(width: 40, height: 24)
+                .frame(width: 48, height: 24)
                 .background(Color.white)
                 .cornerRadius(8)
                 .padding()
@@ -358,21 +392,51 @@ struct SelectTemplateView: View {
         }
     }
     
-    func cropSelectedVideos(completion: @escaping () -> Void) {
-        if selectedTemplate.slides.count == Template.list[4].slides.count {
-            for asset in selectedAssets {
-                print(asset.type)
-                selectedAssets.append(asset)
+    func prepareAssetsForEditing() {
+        for (index, asset) in selectedAssets.enumerated() {
+            if index < selectedTemplate.slides.count {
+                selectedTemplate.slides[index].isVideo = asset.type == .video
             }
         }
         
         let videoAssets = selectedAssets.filter { $0.type == .video }
-        let videoSlides = selectedTemplate.slides.filter { $0.isVideo }
         
-        guard videoAssets.count == videoSlides.count else {
-            print("Error: Mismatch in number of video assets and video slides")
-            completion()
-            return
+        if selectedTemplate.slides.count == Template.list[4].slides.count {
+            let tempSelectedAssets = selectedAssets
+            for asset in tempSelectedAssets {
+                var tempAsset = asset
+                tempAsset.id = UUID()
+                selectedAssets.append(tempAsset)
+            }
+        }
+        
+        // Crop videos if necessary
+        if !videoAssets.isEmpty {
+            cropSelectedVideos {
+                presentVideoEditingView.toggle()
+            }
+        } else {
+            presentVideoEditingView.toggle()
+        }
+    }
+    
+    func cropSelectedVideos(completion: @escaping () -> Void) {
+        let videoAssets = selectedAssets.filter { $0.type == .video }
+        var slides = selectedTemplate.slides
+        
+        if selectedTemplate.slides.count == Template.list[4].slides.count {
+            for (index, asset) in selectedAssets.enumerated() {
+                if asset.type == .video {
+                    slides[index].isVideo = true
+                }
+            }
+        }
+        
+        var videoSlides = slides.filter({ $0.isVideo })
+        
+        withAnimation {
+            isCropping = true
+            croppingProgress = 0
         }
         
         let group = DispatchGroup()
@@ -385,6 +449,9 @@ struct SelectTemplateView: View {
                 case .success(let croppedAsset):
                     DispatchQueue.main.async {
                         self.croppedAssets.append(croppedAsset)
+                        withAnimation {
+                            self.croppingProgress = Double(self.croppedAssets.count) / Double(videoAssets.count)
+                        }
                     }
                 case .failure(let error):
                     print("Error cropping video: \(error.localizedDescription)")
@@ -401,47 +468,10 @@ struct SelectTemplateView: View {
                 }
                 return index1 < index2
             }
+            withAnimation {
+                self.isCropping = false
+            }
             completion()
         }
-    }
-    
-    func orderAssetsAccordingToSlides() -> [MediaAsset] {
-        var orderedAssets: [MediaAsset] = []
-        var photoIndex = 0
-        var videoIndex = 0
-
-        // Create ordered arrays of video and photo assets
-        let orderedSelectedAssets = Array(selectedAssets)
-        let orderedVideoAssets = orderedSelectedAssets.filter { $0.type == .video }
-        let orderedPhotoAssets = orderedSelectedAssets.filter { $0.type == .photo }
-
-        // Check if the current template is Template.list[4]
-        let isTemplate5 = selectedTemplate.id == Template.list[4].id
-
-        for (index, slide) in selectedTemplate.slides.enumerated() {
-            if slide.isVideo {
-                if !croppedAssets.isEmpty {
-                    let assetToAdd = croppedAssets[videoIndex % croppedAssets.count]
-                    orderedAssets.append(assetToAdd)
-                    if isTemplate5 && index == selectedTemplate.slides.count / 2 {
-                        videoIndex = 0 // Reset video index for the second half
-                    } else {
-                        videoIndex += 1
-                    }
-                }
-            } else {
-                if !orderedPhotoAssets.isEmpty {
-                    let assetToAdd = orderedPhotoAssets[photoIndex % orderedPhotoAssets.count]
-                    orderedAssets.append(assetToAdd)
-                    if isTemplate5 && index == selectedTemplate.slides.count / 2 {
-                        photoIndex = 0 // Reset photo index for the second half
-                    } else {
-                        photoIndex += 1
-                    }
-                }
-            }
-        }
-
-        return orderedAssets
     }
 }

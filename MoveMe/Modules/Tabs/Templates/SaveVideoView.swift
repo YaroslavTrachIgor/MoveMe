@@ -18,11 +18,11 @@ enum ShareOption {
 
 struct SaveVideoView: View {
     
-    @State private var tempURLs: [URL] = []
-    
     var audioURL: URL?
     var selectedAssets: [MediaAsset]
     var template: Template
+    
+    @State private var tempURLs: [URL] = []
     
     @State private var isRendering = false
     @State private var renderProgress: Double = 0.0
@@ -56,11 +56,15 @@ struct SaveVideoView: View {
                             Button {
                                 presentationMode.wrappedValue.dismiss()
                             } label: {
-                                Image(systemName: "chevron.left")
-                                    .foregroundStyle(Color.white)
-                                    .font(.body)
-                                    .fontWeight(.semibold)
-                                    .padding(.horizontal, 2)
+                                ZStack {
+                                    Image(systemName: "chevron.backward")
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.white)
+                                        .padding(8)
+                                }
+                                .frame(width: 35, height: 35)
+                                .background(Color.white.opacity(0.15))
+                                .cornerRadius(20)
                             }
                             .disabled(isRendering)
                             .opacity(isRendering ? 0.4 : 1)
@@ -275,7 +279,7 @@ struct SaveVideoView: View {
                 break
             }
         })
-        .navigationDestination(isPresented: $presentMainTemplatesView) {
+        .fullScreenCover(isPresented: $presentMainTemplatesView) {
             ContentView()
         }
         .fullScreenCover(isPresented: $presentSubscriptionsCoerView, content: {
