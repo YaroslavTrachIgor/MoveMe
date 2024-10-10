@@ -42,7 +42,7 @@
 		CE7FE8A82C40FCC20009841D /* SelectTemplateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE7FE8A72C40FCC20009841D /* SelectTemplateView.swift */; };
 		CE7FEB172C39173B003E9DCB /* TabBarScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE7FEB162C39173B003E9DCB /* TabBarScreen.swift */; };
 		CE7FEB192C39175B003E9DCB /* TemplatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE7FEB182C39175B003E9DCB /* TemplatesView.swift */; };
-		CE7FEB1B2C39177A003E9DCB /* PhotosView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE7FEB1A2C39177A003E9DCB /* PhotosView.swift */; };
+		CE7FEB1B2C39177A003E9DCB /* PhotoLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE7FEB1A2C39177A003E9DCB /* PhotoLibraryView.swift */; };
 		CE7FEB1D2C391795003E9DCB /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE7FEB1C2C391795003E9DCB /* SplashView.swift */; };
 		CEA198092C69E553007BFFE2 /* AddMusicView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEA198082C69E553007BFFE2 /* AddMusicView.swift */; };
 		CEA545932CB2787900BAFF1D /* Reel1.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = CEA5458E2CB2787800BAFF1D /* Reel1.mp4 */; };
@@ -84,7 +84,7 @@
 		CE7FE8A72C40FCC20009841D /* SelectTemplateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectTemplateView.swift; sourceTree = "<group>"; };
 		CE7FEB162C39173B003E9DCB /* TabBarScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarScreen.swift; sourceTree = "<group>"; };
 		CE7FEB182C39175B003E9DCB /* TemplatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplatesView.swift; sourceTree = "<group>"; };
-		CE7FEB1A2C39177A003E9DCB /* PhotosView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosView.swift; sourceTree = "<group>"; };
+		CE7FEB1A2C39177A003E9DCB /* PhotoLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryView.swift; sourceTree = "<group>"; };
 		CE7FEB1C2C391795003E9DCB /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
 		CE7FEB1E2C3A3961003E9DCB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CEA198082C69E553007BFFE2 /* AddMusicView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddMusicView.swift; sourceTree = "<group>"; };
@@ -304,6 +304,22 @@
 			path = Save;
 			sourceTree = "<group>";
 		};
+		CE220C722CB4360500036217 /* PhotoLibrary */ = {
+			isa = PBXGroup;
+			children = (
+				CE7FEB1A2C39177A003E9DCB /* PhotoLibraryView.swift */,
+			);
+			path = PhotoLibrary;
+			sourceTree = "<group>";
+		};
+		CE220C732CB4361800036217 /* SelectTemplate */ = {
+			isa = PBXGroup;
+			children = (
+				CE7FE8A72C40FCC20009841D /* SelectTemplateView.swift */,
+			);
+			path = SelectTemplate;
+			sourceTree = "<group>";
+		};
 		CE674AB42C5B10E1001A461E /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -339,8 +355,8 @@
 		CE7FE8AC2C40FD060009841D /* Photos */ = {
 			isa = PBXGroup;
 			children = (
-				CE7FEB1A2C39177A003E9DCB /* PhotosView.swift */,
-				CE7FE8A72C40FCC20009841D /* SelectTemplateView.swift */,
+				CE220C722CB4360500036217 /* PhotoLibrary */,
+				CE220C732CB4361800036217 /* SelectTemplate */,
 			);
 			path = Photos;
 			sourceTree = "<group>";
@@ -501,7 +517,7 @@
 				CE12B2B42C3098E900909A8B /* MoveMeApp.swift in Sources */,
 				CE46AF302C57635300AF4081 /* VisualEffectView.swift in Sources */,
 				CE7FEB192C39175B003E9DCB /* TemplatesView.swift in Sources */,
-				CE7FEB1B2C39177A003E9DCB /* PhotosView.swift in Sources */,
+				CE7FEB1B2C39177A003E9DCB /* PhotoLibraryView.swift in Sources */,
 				CE2448472C7BEF2700CB4E5D /* SubscritionsCoverView.swift in Sources */,
 				CE674AAD2C5AA366001A461E /* ActivityViewController.swift in Sources */,
 				CE7FE8A82C40FCC20009841D /* SelectTemplateView.swift in Sources */,

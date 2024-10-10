@@ -61,7 +61,16 @@ struct SettingsView: View {
             baseCell(emoji: "📘", title: "Terms & Conditions")
                 .padding(.top, 24)
                 .onTapGesture {
-                    guard let url = URL(string: "") else { return }
+                    guard let url = URL(string: "https://zhbr282.wixsite.com/website-1") else { return }
+                    if UIApplication.shared.canOpenURL(url) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            
+            baseCell(emoji: "🗝️", title: "Privacy Policy")
+                .padding(.top, 8)
+                .onTapGesture {
+                    guard let url = URL(string: "https://zhbr282.wixsite.com/moveme-privacy-polic") else { return }
                     if UIApplication.shared.canOpenURL(url) {
                         UIApplication.shared.open(url)
                     }
@@ -70,10 +79,11 @@ struct SettingsView: View {
             baseCell(emoji: "💬", title: "Support")
                 .padding(.top, 8)
                 .onTapGesture {
-                    if MFMailComposeViewController.canSendMail() {
-                        isShowingMailView = true
+                    if !MFMailComposeViewController.canSendMail() {
+                        presentMediaAccessAlert(title: "Cannot send email", message: "Please, make sure that the Apple's Mail app is installed on your device, or copy the follwoing email address to reach out: ask.moveme@gmail.com")
+                        showMailErrorAlert = true
                     } else {
-                        presentMediaAccessAlert(title: "Cannot send email", message: "Please, make sure that the Apple's Mail app is installed on your phone.")
+                        isShowingMailView = true
                     }
                 }
             
@@ -111,12 +121,20 @@ struct SettingsView: View {
         .background(backColor)
         .navigationBarHidden(true)
         .toolbar(.hidden, for: .tabBar)
-        .alert(isPresented: $showMediaAccessAlert) {
-            Alert(
-                title: Text(mediaAccessAlertTitle),
-                message: Text(mediaAccessAlertMessage),
-                dismissButton: .cancel(Text("OK"))
-            )
+        .alert(mediaAccessAlertTitle, isPresented: $showMediaAccessAlert) {
+            if showMailErrorAlert {
+                Button(action: {
+                    UIPasteboard.general.string = "ask.moveme@gmail.com"
+                }, label: {
+                    Text("Copy Email")
+                })
+            }
+            Button(action: {}, label: {
+                Text("Continue")
+                    .fontWeight(.semibold)
+            })
+        } message: {
+            Text(mediaAccessAlertMessage)
         }
         .onAppear {
             tabBarVisible = false

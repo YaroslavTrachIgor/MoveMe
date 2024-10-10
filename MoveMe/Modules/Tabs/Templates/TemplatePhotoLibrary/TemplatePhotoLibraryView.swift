@@ -411,8 +411,7 @@ struct TemplatePhotoLibraryView: View {
         
         if template.slides.count == Template.list[4].slides.count {
             let newAssets = selectedAssets.map { asset in
-                var newAsset = asset
-                newAsset.id = UUID()
+                var newAsset = MediaAsset(id: UUID(), asset: asset.asset, thumbnail: asset.thumbnail, type: asset.type, fullSizeImage: asset.fullSizeImage, videoAsset: asset.videoAsset)
                 return newAsset
             }
             selectedAssets.append(contentsOf: newAssets)
@@ -424,7 +423,7 @@ struct TemplatePhotoLibraryView: View {
                 case .success(let url):
                     
                     audioURL = url
-                    audioName = url.relativeString
+                    audioName = template.defaultAudioName ?? "Unknown Track"
                     audioStartTime = 0.0
                     audioEndTime = template.duration
                     

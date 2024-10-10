@@ -12,6 +12,11 @@ struct SelectTemplateView: View {
     
     @Binding var tabBarVisible: Bool
     
+    @State private var audioURL: URL?
+    @State private var audioName: String?
+    @State private var audioStartTime: Double = 0.0
+    @State private var audioEndTime: Double = 0.0
+    
     @State var assets: [MediaAsset] = []
     @State var selectedAssets: [MediaAsset] = []
     @State private var croppedAssets: [MediaAsset] = []
@@ -352,7 +357,23 @@ struct SelectTemplateView: View {
         .navigationBarHidden(true)
         .toolbar(.hidden, for: .tabBar)
         .navigationDestination(isPresented: $presentVideoEditingView) {
-            VideoEditingView(selectedAssetsArray: selectedAssets, template: selectedTemplate)
+            VStack {
+                if let audioURL = audioURL {
+                    VideoEditingView(
+                        selectedAssetsArray: selectedAssets,
+                        template: selectedTemplate,
+                        audioURL: audioURL,
+                        audioName: audioName,
+                        audioStartTime: audioStartTime,
+                        audioEndTime: audioEndTime
+                    )
+                } else {
+                    VideoEditingView(
+                        selectedAssetsArray: selectedAssets,
+                        template: selectedTemplate
+                    )
+                }
+            }
         }
         .fullScreenCover(isPresented: $presentSubscritionsCoverView) {
             SubscritionsCoverView()
@@ -404,19 +425,40 @@ struct SelectTemplateView: View {
         if selectedTemplate.slides.count == Template.list[4].slides.count {
             let tempSelectedAssets = selectedAssets
             for asset in tempSelectedAssets {
-                var tempAsset = asset
-                tempAsset.id = UUID()
+                let tempAsset = MediaAsset(id: UUID(), asset: asset.asset, thumbnail: asset.thumbnail, type: asset.type, fullSizeImage: asset.fullSizeImage, videoAsset: asset.videoAsset)
                 selectedAssets.append(tempAsset)
             }
         }
         
-        // Crop videos if necessary
-        if !videoAssets.isEmpty {
-            cropSelectedVideos {
-                presentVideoEditingView.toggle()
+        if let defaultAudioPath = selectedTemplate.defaultAudioPath {
+            getAudioFromFirebase(path: defaultAudioPath) { result in
+                switch result {
+                case .success(let url):
+                     
+                    audioURL = url
+                    audioName = selectedTemplate.defaultAudioName ?? "Unknown Track"
+                    audioStartTime = 0.0
+                    audioEndTime = selectedTemplate.duration
+                    
+                    if !videoAssets.isEmpty {
+                        cropSelectedVideos {
+                            presentVideoEditingView.toggle()
+                        }
+                    } else {
+                        presentVideoEditingView.toggle()
+                    }
+                case .failure(let error):
+                    print("Error getting audio file from Firebase: \(error.localizedDescription)")
+                }
             }
         } else {
-            presentVideoEditingView.toggle()
+            if !videoAssets.isEmpty {
+                cropSelectedVideos {
+                    presentVideoEditingView.toggle()
+                }
+            } else {
+                presentVideoEditingView.toggle()
+            }
         }
     }
     

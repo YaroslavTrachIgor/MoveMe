@@ -511,6 +511,15 @@ class MediaAsset: Identifiable, Hashable {
     var fullSizeImage: UIImage?
     var videoAsset: AVAsset?
     
+    init(id: UUID, asset: PHAsset?, thumbnail: UIImage?, type: MediaType, fullSizeImage: UIImage?, videoAsset: AVAsset?) {
+        self.id = id
+        self.asset = asset
+        self.thumbnail = thumbnail
+        self.type = type
+        self.fullSizeImage = fullSizeImage
+        self.videoAsset = videoAsset
+    }
+    
     init(asset: PHAsset) {
         self.asset = asset
         self.type = asset.mediaType == .image ? .photo : .video

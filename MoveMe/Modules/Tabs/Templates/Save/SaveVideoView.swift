@@ -418,6 +418,7 @@ struct SaveVideoView: View {
                 .padding()
                 .padding(.horizontal)
                 .padding(.bottom, -30)
+                .tint(tabBarForeColor)
             
             Text("\(Int(renderProgress * 100))%")
                 .font(.caption)

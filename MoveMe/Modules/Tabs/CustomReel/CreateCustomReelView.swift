@@ -17,8 +17,11 @@ struct CustomCustomReelView: View {
     @StateObject private var photoLibraryViewModel = PhotoLibraryViewModel()
     
     @State private var presentSubscritionsCoverView = false
+    @State private var isCropping = false
+    @State private var croppingProgress: Double = 0
     @State private var selectedCategory: PhotoCategory = .recent
     @State private var selectedAssets: [MediaAsset] = []
+    @State private var croppedAssets: [MediaAsset] = []
     @State private var isLoadingFullSizeImages = false
     @State private var loadingProgress: Double = 0
     
@@ -210,6 +213,30 @@ struct CustomCustomReelView: View {
                     .ignoresSafeArea(.all)
                 }
                 
+                
+                if isCropping {
+                    backColor.opacity(0.5)
+                    
+                    BlurView(style: .dark)
+                        .edgesIgnoringSafeArea(.all)
+                    
+                    VStack {
+                        ProgressView("", value: croppingProgress, total: 1.0)
+                            .progressViewStyle(LinearProgressViewStyle())
+                            .foregroundStyle(LinearGradient(gradient: Gradient(colors: [.purple, .pink, .orange]), startPoint: .leading, endPoint: .trailing))
+                            .padding()
+                            .padding(.horizontal)
+                            .padding(.bottom, -30)
+                        
+                        Text("\(Int(croppingProgress * 100))%")
+                            .font(.caption)
+                            .foregroundStyle(Color.white.opacity(0.3))
+                            .padding()
+                            .padding(.bottom)
+                    }
+                }
+                
+                
                 // Loading overlay
                 if isLoadingFullSizeImages {
                     LoadingOverlay(progress: $loadingProgress)
@@ -274,7 +301,62 @@ struct CustomCustomReelView: View {
             Slide(id: UUID(), duration: defaultSlideDuration, isHDApplied: false, isVideo: asset.type == .video)
         }
         template.duration = Double(selectedAssets.count) * defaultSlideDuration
-        presentVideoEditingView.toggle()
+        
+        let videoAssets = selectedAssets.filter { $0.type == .video }
+        if !videoAssets.isEmpty {
+            cropSelectedVideos {
+                presentVideoEditingView.toggle()
+            }
+        } else {
+            presentVideoEditingView.toggle()
+        }
+    }
+    
+    func cropSelectedVideos(completion: @escaping () -> Void) {
+        let videoAssets = selectedAssets.filter { $0.type == .video }
+        var slides = template.slides
+        let videoSlides = slides.filter({ $0.isVideo })
+        
+        withAnimation {
+            isCropping = true
+            croppingProgress = 0
+        }
+        
+        let group = DispatchGroup()
+        croppedAssets = [] // Clear the array before populating
+        
+        for (index, asset) in videoAssets.enumerated() {
+            group.enter()
+            VideoRenderingManager.shared.cropVideo(asset: asset, slide: videoSlides[index]) { result in
+                switch result {
+                case .success(let croppedAsset):
+                    print(videoSlides[index].duration)
+                    DispatchQueue.main.async {
+                        self.croppedAssets.append(croppedAsset)
+                        withAnimation {
+                            self.croppingProgress = Double(self.croppedAssets.count) / Double(videoAssets.count)
+                        }
+                    }
+                case .failure(let error):
+                    print("Error cropping video: \(error.localizedDescription)")
+                }
+                group.leave()
+            }
+        }
+        
+        group.notify(queue: .main) {
+            self.croppedAssets.sort { (asset1, asset2) -> Bool in
+                guard let index1 = videoAssets.firstIndex(where: { $0.id == asset1.id }),
+                      let index2 = videoAssets.firstIndex(where: { $0.id == asset2.id }) else {
+                    return false
+                }
+                return index1 < index2
+            }
+            withAnimation {
+                self.isCropping = false
+            }
+            completion()
+        }
     }
 }
 
